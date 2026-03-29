@@ -1,32 +1,100 @@
 from config import db
 from bson.objectid import ObjectId
-from models.note_model import update_note
-from flask import Blueprint, request, jsonify
-note_bp = Blueprint("note_bp", __name__)
-@note_bp.route("/update-note/<note_id>", methods=["PUT"])
-def update_note_api(note_id):
-    data = request.json
-    user_id = data["user_id"]
+from datetime import datetime
 
-    note = db.notes.find_one({"_id": ObjectId(note_id)})
 
-    if not note:
-        return jsonify({"message": "Note not found"}), 404
+def create_note(note_data):
+    note_data["created_at"] = datetime.utcnow()
+    note_data["is_deleted"] = False
+    return db.notes.insert_one(note_data)
 
-    # Owner check
-    if note["user_id"] == user_id:
-        update_note(note_id, data)
-        return jsonify({"message": "Note updated (owner)"})
 
-    # Shared permission check
-    share = db.note_shares.find_one({
-        "note_id": note_id,
-        "shared_with": user_id,
-        "permission": "write"
-    })
+def get_notes_by_user(user_id):
+    notes = list(db.notes.find({
+        "user_id": user_id,
+        "is_deleted": False
+    }))
 
-    if share:
-        update_note(note_id, data)
-        return jsonify({"message": "Note updated (shared user)"})
+    for note in notes:
+        note["_id"] = str(note["_id"])
 
-    return jsonify({"message": "Permission denied"}), 403
+    return notes
+
+
+def update_note(note_id, updated_data):
+    allowed_fields = ["title", "content", "tags"]
+
+    filtered_data = {
+        k: v for k, v in updated_data.items() if k in allowed_fields
+    }
+
+    # ✅ Add updated time
+    from datetime import datetime
+    filtered_data["updated_at"] = datetime.utcnow()
+
+    from bson.objectid import ObjectId
+    return db.notes.update_one(
+        {"_id": ObjectId(note_id)},
+        {"$set": filtered_data}
+    )
+
+
+def delete_note(note_id):
+    return db.notes.update_one(
+        {"_id": ObjectId(note_id)},
+        {"$set": {"is_deleted": True}}
+    )
+    # 🔍 SEARCH NOTES
+def search_notes(user_id, query=None, tag=None):
+    from bson.objectid import ObjectId
+
+    # ✅ get shared note ids
+    shared_notes = db.note_shares.find({"shared_with": user_id})
+    shared_note_ids = [ObjectId(s["note_id"]) for s in shared_notes]
+
+    filter_query = {
+        "is_deleted": False,
+        "$or": [
+            {"user_id": user_id},
+            {"_id": {"$in": shared_note_ids}}
+        ]
+    }
+
+    if query:
+        filter_query["$and"] = [{
+            "$or": [
+                {"title": {"$regex": query, "$options": "i"}},
+                {"content": {"$regex": query, "$options": "i"}}
+            ]
+        }]
+
+    if tag:
+        filter_query["tags"] = tag
+
+    notes = list(db.notes.find(filter_query))
+
+    for note in notes:
+        note["_id"] = str(note["_id"])
+
+    return notes
+
+
+# 🗑️ GET TRASH NOTES
+def get_deleted_notes(user_id):
+    notes = list(db.notes.find({
+        "user_id": user_id,
+        "is_deleted": True
+    }))
+
+    for note in notes:
+        note["_id"] = str(note["_id"])
+
+    return notes
+
+
+# ♻️ RESTORE NOTE
+def restore_note(note_id):
+    return db.notes.update_one(
+        {"_id": ObjectId(note_id)},
+        {"$set": {"is_deleted": False}}
+    )

@@ -2,24 +2,24 @@ from flask import Blueprint, request, jsonify
 from models.user_model import create_user, find_user_by_username
 from utils.auth_utils import hash_password, check_password
 
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint("auth", __name__)
 
-# SIGNUP
-@auth_bp.route('/signup', methods=['POST'])
+
+@auth_bp.route("/signup", methods=["POST"])
 def signup():
     data = request.json
 
     username = data.get("username")
     password = data.get("password")
 
-    # check user exists
+    if not username or not password:
+        return jsonify({"message": "Username and password required"}), 400
+
     if find_user_by_username(username):
         return jsonify({"message": "User already exists"}), 400
 
-    # hash password
     hashed_pw = hash_password(password)
 
-    # store user
     create_user({
         "username": username,
         "password": hashed_pw
@@ -28,8 +28,7 @@ def signup():
     return jsonify({"message": "User created successfully"}), 201
 
 
-# LOGIN
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.json
 
