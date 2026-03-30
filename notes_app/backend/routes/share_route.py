@@ -1,76 +1,41 @@
 from flask import Blueprint, request, jsonify
-from models.share_model import share_note, get_shared_notes, unshare_note
 from config import db
-from bson.objectid import ObjectId
+from models.share_model import share_note
 
 share_bp = Blueprint("share", __name__)
 
-
-# ✅ SHARE NOTE (UPDATED)
 @share_bp.route("/share-note", methods=["POST"])
 def share_note_api():
-    data = request.json
+    try:
+        data = request.json
+        # React sends 'shared_with' for the target username
+        target_username = data.get("shared_with") 
+        note_id = data.get("note_id")
+        owner_id = data.get("user_id") # React sends the owner as 'user_id'
 
-    note_id = data.get("note_id")
-    owner_id = data.get("owner_id")
-    shared_with = data.get("shared_with")
-    permission = data.get("permission")
+        if not target_username or not note_id:
+            return jsonify({"message": "Recipient username and Note ID are required"}), 400
 
-    # ✅ Validate input
-    if not all([note_id, owner_id, shared_with, permission]):
-        return jsonify({"message": "All fields required"}), 400
+        # 1. Find the recipient user
+        recipient = db.users.find_one({"username": target_username})
+        
+        if not recipient:
+            return jsonify({"message": f"User '{target_username}' not found"}), 404
 
-    # ✅ Check note exists
-    note = db.notes.find_one({"_id": ObjectId(note_id)})
-    if not note:
-        return jsonify({"message": "Note not found"}), 404
+        # 2. Prevent sharing with yourself
+        if str(recipient["_id"]) == str(owner_id):
+            return jsonify({"message": "You cannot share a note with yourself"}), 400
 
-    # ✅ Only owner can share
-    if note["user_id"] != owner_id:
-        return jsonify({"message": "Only owner can share"}), 403
+        # 3. Save the share record
+        share_note({
+            "note_id": str(note_id),
+            "owner_id": str(owner_id),
+            "shared_with": str(recipient["_id"]),
+            "permission": "read"
+        })
+        
+        return jsonify({"message": f"Note shared with {target_username}!"}), 200
 
-    # ✅ Prevent duplicate sharing
-    existing = db.note_shares.find_one({
-        "note_id": note_id,
-        "shared_with": shared_with
-    })
-
-    if existing:
-        return jsonify({"message": "Note already shared"}), 400
-
-    share_data = {
-        "note_id": note_id,
-        "owner_id": owner_id,
-        "shared_with": shared_with,
-        "permission": permission
-    }
-
-    share_note(share_data)
-
-    return jsonify({"message": "Note shared successfully"})
-
-
-# ✅ GET SHARED NOTES
-@share_bp.route("/shared-notes/<user_id>", methods=["GET"])
-def get_shared_notes_api(user_id):
-    notes = get_shared_notes(user_id)
-    return jsonify(notes)
-
-
-# ❌ UNSHARE NOTE (NEW)
-@share_bp.route("/unshare-note", methods=["DELETE"])
-def unshare_note_api():
-    data = request.json
-
-    note_id = data.get("note_id")
-    user_id = data.get("user_id")
-
-    if not note_id or not user_id:
-        return jsonify({"message": "note_id and user_id required"}), 400
-
-    result = unshare_note(note_id, user_id)
-
-    if result.deleted_count == 0:
-        return jsonify({"message": "Share not found"}), 404
-
-    return jsonify({"message": "Note unshared successfully"})
+    except Exception as e:
+        print(f"❌ Share Error: {e}")
+        return jsonify({"message": "Internal server error"}), 500
