@@ -7,7 +7,7 @@ from routes.share_route import share_bp
 app = Flask(__name__)
 
 # ✅ Essential for React connection
-CORS(app) 
+CORS(app, resources={r"/*": {"origins": "https://multi-user-notes-system-with-sharin.vercel.app/"}})
 
 # ✅ Registering your features
 app.register_blueprint(auth_bp)

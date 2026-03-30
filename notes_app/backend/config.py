@@ -1,9 +1,15 @@
 import pymongo
 import os
 
-# Ensure your MongoDB URI is correct. 
-# If using Atlas, make sure your IP is whitelisted!
-client = pymongo.MongoClient("mongodb+srv://devadharshinigurumoorthy_db_user:deva123@deva.uhxmas7.mongodb.net/", serverSelectionTimeoutMS=5000)
+MONGO_URI = "mongodb+srv://devadharshinigurumoorthy_db_user:deva123@deva.uhxmas7.mongodb.net/notes_db?retryWrites=true&w=majority"
+
+client = pymongo.MongoClient(
+    MONGO_URI,
+    tls=True,
+    tlsAllowInvalidCertificates=True,
+    serverSelectionTimeoutMS=5000
+)
+
 db = client["notes_db"]
 
 try:
