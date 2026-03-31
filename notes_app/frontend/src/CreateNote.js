@@ -17,7 +17,7 @@ function CreateNote({ userId, refreshNotes }) {
 
     try {
       // Use 127.0.0.1 to avoid Windows 'localhost' resolution issues
-      const res = await fetch("http://127.0.0.1:5000/create-note", {
+      const res = await fetch("https://multi-user-notes-system-with-sharing.onrender.com/create-note", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -13,7 +13,7 @@ function Login({ setUserId }) {
 
     try {
       // Using 127.0.0.1 to avoid Windows localhost DNS delays
-      const res = await fetch("http://127.0.0.1:5000/login", {
+      const res = await fetch("https://multi-user-notes-system-with-sharing.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),

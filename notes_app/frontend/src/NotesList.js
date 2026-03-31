@@ -17,7 +17,7 @@ function NotesList({ notes, userId, refreshNotes, isOwner }) {
 
   const handleUpdate = async (noteId) => {
     try {
-      const res = await fetch(`http://127.0.0.1:5000/update-note/${noteId}`, {
+      const res = await fetch(`https://multi-user-notes-system-with-sharing.onrender.com/update-note/${noteId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -38,7 +38,7 @@ function NotesList({ notes, userId, refreshNotes, isOwner }) {
 
   const handleDelete = async (noteId) => {
     if (!window.confirm("Delete this note?")) return;
-    await fetch(`http://127.0.0.1:5000/delete-note/${noteId}`, {
+    await fetch(`https://multi-user-notes-system-with-sharing.onrender.com/delete-note/${noteId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId }),
@@ -48,7 +48,7 @@ function NotesList({ notes, userId, refreshNotes, isOwner }) {
 
   const handleShare = async (noteId) => {
     // Correct logic for your backend sharing route
-    await fetch("http://127.0.0.1:5000/share-note", {
+    await fetch("https://multi-user-notes-system-with-sharing.onrender.com/share-note", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ note_id: noteId, shared_with: recipient, permission: "read" }),
